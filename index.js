@@ -95,14 +95,14 @@ app.get("/upload", async (req, res) => {
   console.log("this is " + req.query.fileName);
   const { fileName, fileType } = req.query;
   const s3Params = {
-    Bucket: process.env.S3_BUCKET,
+    Bucket: 'cataloguefiles',
     Key: fileName,
     ContentType: fileType,
     // ACL: 'bucket-owner-full-control'
   };
   const s3 = new S3Client({
     forcePathStyle: false, // Configures to use subdomain/virtual calling format.
-    endpoint: "https://cataloguefiles.lon1.digitaloceanspaces.com",
+    endpoint: "https://lon1.digitaloceanspaces.com",
     region: "us-east-1",
     credentials: {
       accessKeyId: process.env.SPACES_KEY,
