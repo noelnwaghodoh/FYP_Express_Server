@@ -61,6 +61,7 @@ export async function addBook(values) {
     ],
   );
   const id = [result.insertId];
+
   return getBook(id);
 }
 
@@ -76,5 +77,3 @@ export async function login(email, password) {
   );
   return rows;
 }
-
-const result = await getUsers();

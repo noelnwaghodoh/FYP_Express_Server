@@ -1,13 +1,20 @@
 import express, { request } from "express";
 import data from "./data/mock.json" with { type: "json" };
 import cors from "cors";
-import { getUsers, getUser, login } from "./database.js";
-import { pool } from "./database.js";
+import { getUsers, getUser, login } from "./database/database.js";
+import { pool } from "./database/database.js";
 import req from "express/lib/request.js";
 import { S3 } from "@aws-sdk/client-s3";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { addBook } from "./database.js";
+import { addBook } from "./database/database.js";
+import {
+  addNewBook,
+  getCatalogueInfo,
+  getfullBookInfo,
+} from "./database/book.js";
+import { addNewCatalogueInfo } from "./database/book.js";
+import { addBookID } from "./database/book.js";
 //import res from "express/lib/response";
 
 const app = express();
@@ -64,8 +71,23 @@ app.get("/users", async (request, response) => {
 });
 
 app.post("/catalogue", async (req, res) => {
-  const newBook = addBook(req.body);
-  res.send(newBook);
+  const newBook = addNewBook(req.body);
+
+  const catalogueInfo = {
+    itemSubjects: req.body.bookSubjects,
+    itemDescription: req.body.bookDescription,
+    itemPublisher: req.body.bookPublisher,
+  };
+
+  const newCatalogueInfo = await addNewCatalogueInfo(catalogueInfo);
+  const r2 = await addBookID(newCatalogueInfo, newCatalogueInfo);
+  const r1 = await getCatalogueInfo(newCatalogueInfo);
+
+  console.log("r2 is:" + r2);
+  console.log("r1 is: " + r1);
+  const finalres = await getfullBookInfo(newCatalogueInfo);
+  console.log("the final response is: " + JSON.stringify(finalres));
+  res.send(finalres);
 });
 
 app.get("/upload", async (req, res) => {
