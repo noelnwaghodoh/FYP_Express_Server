@@ -15,6 +15,7 @@ import {
 } from "./database/book.js";
 import { addNewCatalogueInfo } from "./database/book.js";
 import { addBookID } from "./database/book.js";
+import { Search5BooksByTitle, SearchBooksByTitle } from "./database/search.js";
 //import res from "express/lib/response";
 
 const app = express();
@@ -90,12 +91,51 @@ app.post("/catalogue", async (req, res) => {
   res.send(finalres);
 });
 
+app.put("/upload-complete", async (req, res) => {
+  console.log("The request.body.filekey is " + req.body.fileKey);
+
+  try {
+    res.json("Hello");
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+async function generateSignedURL(fileName, fileType) {
+  const s3Params = {
+    Bucket: "cataloguefiles",
+    Key: fileName,
+    ContentType: fileType,
+    // ACL: 'bucket-owner-full-control'
+  };
+  const s3 = new S3Client({
+    forcePathStyle: false, // Configures to use subdomain/virtual calling format.
+    endpoint: "https://lon1.digitaloceanspaces.com",
+    region: "us-east-1",
+    credentials: {
+      accessKeyId: process.env.SPACES_KEY,
+      secretAccessKey: process.env.SPACES_SECRET,
+    },
+  });
+  const command = new PutObjectCommand(s3Params);
+
+  try {
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    return signedUrl;
+  } catch (err) {
+    console.error(err);
+  }
+}
 app.get("/upload", async (req, res) => {
   console.log("pong");
   console.log("this is " + req.query.fileName);
   const { fileName, fileType } = req.query;
+  console.log("file name and file type are" + fileType);
+
+  generateSignedURL(fileName, fileType);
+
   const s3Params = {
-    Bucket: 'cataloguefiles',
+    Bucket: "cataloguefiles",
     Key: fileName,
     ContentType: fileType,
     // ACL: 'bucket-owner-full-control'
@@ -124,6 +164,25 @@ app.get("/users/:id", async (request, response) => {
   const id = request.params.id;
   const note = await getNote(id);
   response.send(note);
+  // console.log(result);
+  // res.json();
+});
+
+app.get("/books/", async (request, response) => {
+  const search = request.query.searchText;
+  console.log(request.query);
+  const note = await Search5BooksByTitle(search);
+  console.log("THE NOTE IS " + note);
+  response.json(note);
+  // console.log(result);
+  // res.json();
+});
+app.get("/books/search", async (request, response) => {
+  const search = request.query.searchText;
+  console.log(request.query);
+  const note = await SearchBooksByTitle(search);
+  console.log("THE NOTE IS " + note);
+  response.json(note);
   // console.log(result);
   // res.json();
 });
