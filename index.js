@@ -5,7 +5,11 @@ import { getUsers, getUser, login } from "./database/database.js";
 import { pool } from "./database/database.js";
 import req from "express/lib/request.js";
 import { S3 } from "@aws-sdk/client-s3";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { addBook } from "./database/database.js";
 import {
@@ -101,7 +105,7 @@ app.put("/upload-complete", async (req, res) => {
   }
 });
 
-async function generateSignedURL(fileName, fileType) {
+async function generateUploadURL(fileName, fileType) {
   const s3Params = {
     Bucket: "cataloguefiles",
     Key: fileName,
@@ -126,38 +130,16 @@ async function generateSignedURL(fileName, fileType) {
     console.error(err);
   }
 }
+
 app.get("/upload", async (req, res) => {
   console.log("pong");
   console.log("this is " + req.query.fileName);
   const { fileName, fileType } = req.query;
   console.log("file name and file type are" + fileType);
 
-  generateSignedURL(fileName, fileType);
+  const signedUrl = generateUploadURL(fileName, fileType);
 
-  const s3Params = {
-    Bucket: "cataloguefiles",
-    Key: fileName,
-    ContentType: fileType,
-    // ACL: 'bucket-owner-full-control'
-  };
-  const s3 = new S3Client({
-    forcePathStyle: false, // Configures to use subdomain/virtual calling format.
-    endpoint: "https://lon1.digitaloceanspaces.com",
-    region: "us-east-1",
-    credentials: {
-      accessKeyId: process.env.SPACES_KEY,
-      secretAccessKey: process.env.SPACES_SECRET,
-    },
-  });
-  const command = new PutObjectCommand(s3Params);
-
-  try {
-    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
-    console.log(signedUrl);
-    res.json({ signedUrl });
-  } catch (err) {
-    console.error(err);
-  }
+  res.json({ signedUrl });
 });
 
 app.get("/users/:id", async (request, response) => {
