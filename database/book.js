@@ -112,3 +112,47 @@ export async function addNewCatalogueInfo(values) {
   console.log("result.insert id in the function is " + id);
   return id;
 }
+
+export async function addBookWithCatalogueTransaction(bookValues, catalogueValues) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Insert CatalogueInfo
+    const [catalogueResult] = await connection.query(
+      `
+        INSERT into CatalogueInfo (ItemSubjects,ItemPublisher,ItemDescription)
+        Values(?,?,?)
+      `,
+      [catalogueValues.itemSubjects, catalogueValues.itemPublisher, catalogueValues.itemDescription]
+    );
+    const catalogueId = catalogueResult.insertId;
+
+    // 2. Insert Book linking the newly created CatalogueInfoID
+    const [bookResult] = await connection.query(
+      `
+        INSERT into Books (BookTitle, BookIdentifier, BookEdition, BookDate, BookContributors, BookAuthor, BookFileName, catalogueInfoID)
+        Values(?,?,?,?,?,?,?,?)
+      `,
+      [
+        bookValues.bookTitle,
+        bookValues.bookIdentifier,
+        bookValues.bookEdition,
+        bookValues.bookReleaseDate,
+        bookValues.bookContributors,
+        bookValues.bookAuthor,
+        bookValues.bookFileName,
+        catalogueId
+      ]
+    );
+    const bookId = bookResult.insertId;
+
+    await connection.commit();
+    return bookId;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}

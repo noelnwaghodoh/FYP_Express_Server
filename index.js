@@ -16,10 +16,13 @@ import {
   addNewBook,
   getCatalogueInfo,
   getfullBookInfo,
+  addBookWithCatalogueTransaction
 } from "./database/book.js";
 import { addNewCatalogueInfo } from "./database/book.js";
 import { addBookID } from "./database/book.js";
 import { Search5BooksByTitle, SearchBooksByTitle } from "./database/search.js";
+import { generateThumbnail } from "./s3.js";
+import {generateCatalogueUploadURL} from "./s3.js";
 //import res from "express/lib/response";
 
 const app = express();
@@ -76,27 +79,30 @@ app.get("/users", async (request, response) => {
 });
 
 app.post("/catalogue", async (req, res) => {
-  const newBook = addNewBook(req.body);
-
   const catalogueInfo = {
     itemSubjects: req.body.bookSubjects,
     itemDescription: req.body.bookDescription,
     itemPublisher: req.body.bookPublisher,
   };
 
-  const newCatalogueInfo = await addNewCatalogueInfo(catalogueInfo);
-  const r2 = await addBookID(newCatalogueInfo, newCatalogueInfo);
-  const r1 = await getCatalogueInfo(newCatalogueInfo);
+  try {
+    // We now insert both the Catalogue Info and the Book atomically via transaction
+    const bookId = await addBookWithCatalogueTransaction(req.body, catalogueInfo);
 
-  console.log("r2 is:" + r2);
-  console.log("r1 is: " + r1);
-  const finalres = await getfullBookInfo(newCatalogueInfo);
-  console.log("the final response is: " + JSON.stringify(finalres));
-  res.send(finalres);
+    const finalres = await getfullBookInfo(bookId);
+    console.log("the final response is: " + JSON.stringify(finalres));
+    res.send(finalres);
+  } catch (err) {
+    console.error("Failed to upload catalogue using transaction:", err);
+    res.status(500).send({ error: "Failed to create catalogue entry" });
+  }
 });
 
-app.put("/upload-complete", async (req, res) => {
+app.put("/uploadcomplete", async (req, res) => {
   console.log("The request.body.filekey is " + req.body.fileKey);
+
+  const fileName = req.body.fileKey;
+  generateThumbnail(fileName);
 
   try {
     res.json("Hello");
@@ -137,9 +143,9 @@ app.get("/upload", async (req, res) => {
   const { fileName, fileType } = req.query;
   console.log("file name and file type are" + fileType);
 
-  const signedUrl = generateUploadURL(fileName, fileType);
+  const signedUrl = await generateCatalogueUploadURL(fileName, fileType);
 
-  res.json({ signedUrl });
+  res.json({ url: signedUrl });
 });
 
 app.get("/users/:id", async (request, response) => {
