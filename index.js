@@ -22,7 +22,7 @@ import { addNewCatalogueInfo } from "./database/book.js";
 import { addBookID } from "./database/book.js";
 import { Search5BooksByTitle, SearchBooksByTitle } from "./database/search.js";
 import { generateThumbnail } from "./s3.js";
-import {generateCatalogueUploadURL} from "./s3.js";
+import {generateCatalogueUploadURL,generateCatalogueDownloadURL} from "./s3.js";
 //import res from "express/lib/response";
 
 const app = express();
@@ -98,6 +98,21 @@ app.post("/catalogue", async (req, res) => {
   }
 });
 
+app.get("/catalogue", async (req, res) => {
+  console.log("the  from catalog eget tour title is: " + JSON.stringify(req.query));
+  const title = req.query.searchText ; 
+  const books = await SearchBooksByTitle(title);
+  res.send(books);
+  console.log(books);
+});
+app.get("/catalogue/id", async (req, res) => {
+  console.log("the  from catalog the book with our idis: " + JSON.stringify(req.query));
+  const id = req.query.bookID ; 
+  const books = await getfullBookInfo(id);
+  res.send(books);
+  console.log(books);
+});
+
 app.put("/uploadcomplete", async (req, res) => {
   console.log("The request.body.filekey is " + req.body.fileKey);
 
@@ -146,6 +161,13 @@ app.get("/upload", async (req, res) => {
   const signedUrl = await generateCatalogueUploadURL(fileName, fileType);
 
   res.json({ url: signedUrl });
+});
+app.get("/catalogue/signed-url", async (req, res) => {
+
+    const fileName  = req.query.fileName;
+  const signedUrl = await generateCatalogueDownloadURL(fileName);
+  res.json({ url: signedUrl });
+  console.log(signedUrl);
 });
 
 app.get("/users/:id", async (request, response) => {
