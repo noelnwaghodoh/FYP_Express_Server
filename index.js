@@ -18,6 +18,7 @@ import {
 import { addNewCatalogueInfo } from "./database/book.js";
 import { addBookID } from "./database/book.js";
 import bookRoutes from "./routes/book-routes.js";
+import noteRoutes from "./routes/note-routes.js";
 import { generateThumbnail } from "./s3.js";
 
 import catalogueRoutes from "./routes/catalogue-routes.js";
@@ -78,6 +79,7 @@ app.put("/uploadcomplete", async (req, res) => {
 
 
 app.use("/books", bookRoutes);
+app.use("/notes", noteRoutes);
 
 app.post("/edit", (request, response) => {
   response.send("This is PUT request at /edit");
