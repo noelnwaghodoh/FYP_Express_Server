@@ -22,7 +22,7 @@ export async function getUser(id) {
     `
     SELECT * 
     FROM Users
-    WHERE id = ?;
+    WHERE UserID = ?;
     `,
     [id],
   );

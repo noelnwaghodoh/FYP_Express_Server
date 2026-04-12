@@ -24,6 +24,8 @@ import { Search5BooksByTitle, SearchBooksByTitle } from "./database/search.js";
 import { generateThumbnail } from "./s3.js";
 import {generateCatalogueUploadURL,generateCatalogueDownloadURL} from "./s3.js";
 //import res from "express/lib/response";
+import session from "express-session";
+import MySQLStoreFactory from "express-mysql-session";
 
 const app = express();
 
@@ -69,6 +71,32 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
+const MySQLStore = MySQLStoreFactory(session);
+const options = {
+    host: process.env.MYSQL_HOST,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE
+};
+const sessionStore = new MySQLStore(options);
+
+sessionStore.onReady().then(() => {
+    console.log("Session store ready and table created!");
+}).catch(err => {
+    console.error("Session store failed to create table:", err);
+});
+
+
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'keyboard cat', // Don't forget to change this later!
+  store: sessionStore, // Force session saving to the database
+  resave: false,
+  saveUninitialized: false, // Changed to false to avoid bloat from empty sessions
+  cookie: { 
+      secure: false // Since you are on localhost (HTTP) this must be false, otherwise cookies won't save
+  }
+}));
 let x = null;
 
 app.get("/users", async (request, response) => {
@@ -78,7 +106,24 @@ app.get("/users", async (request, response) => {
   // res.json();
 });
 
+app.get("/me", async (req, res) => {
+
+  if (!req.session || !req.session.isLoggedIn) {
+    return res.status(401).json({ error: "Unauthorized: You must be logged access this page." });
+  }
+
+  console.log("the session is: " + JSON.stringify(req.session));
+  const user = await getUser(req.session.user.userID);
+  res.send(user);
+  console.log(user);
+});
+
 app.post("/catalogue", async (req, res) => {
+  // Protect the route using the session
+  if (!req.session || !req.session.isLoggedIn) {
+    return res.status(401).json({ error: "Unauthorized: You must be logged in to upload to the catalogue." });
+  }
+
   const catalogueInfo = {
     itemSubjects: req.body.bookSubjects,
     itemDescription: req.body.bookDescription,
@@ -211,8 +256,22 @@ app.post("/login", async (request, response) => {
   });*/
   const user = await login(request.body.email, request.body.password);
   console.log(user);
-  if (user) {
-    response.json({ Login: true, usertype: user[0].UserTypeID });
+  
+ 
+  if (user.length>0) {
+
+     const finalUser = {
+    usertype: user[0].UserTypeID,
+    userID: user[0].UserID,
+    userFirstName: user[0].UserFirstName,
+    userLastName: user[0].UserLastName,
+    userEmail: user[0].UserEmail
+  }
+    // Setting session data directly instead of setting manual cookies
+    request.session.isLoggedIn = true;
+    request.session.user = finalUser;
+
+    response.json({ Login: true, user:finalUser });
   } else {
     response.json({ Login: false });
   }
