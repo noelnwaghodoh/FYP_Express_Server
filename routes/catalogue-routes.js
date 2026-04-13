@@ -1,7 +1,7 @@
 import express from "express";
-import { getfullBookInfo, addBookWithCatalogueTransaction } from "../database/book.js";
+import { getfullBookInfo, addBookWithCatalogueTransaction, deleteBookAndCatalogue, updateBookAndCatalogueTransaction } from "../database/book.js";
 import { SearchBooksByTitle } from "../database/search.js";
-import { generateCatalogueUploadURL, generateCatalogueDownloadURL } from "../s3.js";
+import { generateCatalogueUploadURL, generateCatalogueDownloadURL, deleteCatalogueFile, deleteThumbnailFile } from "../s3.js";
 
 const router = express.Router();
 
@@ -62,6 +62,58 @@ router.get("/signed-url", async (req, res) => {
   const signedUrl = await generateCatalogueDownloadURL(fileName);
   res.json({ url: signedUrl });
   console.log(signedUrl);
+});
+
+router.delete("/:id", async (req, res) => {
+  const bookId = req.params.id;
+
+  console.log("the book id is: " + bookId);
+  try {
+    const book = await getfullBookInfo(bookId);
+    if (!book) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+    
+    // Delete files from S3 if the book references a file
+    if (book.BookFileName) {
+      await deleteCatalogueFile(book.BookFileName).catch(err => console.error(err));
+      await deleteThumbnailFile(book.BookFileName).catch(err => console.error(err));
+    }
+
+    // Delete DB entries
+    await deleteBookAndCatalogue(bookId);
+
+    res.json({ success: true, message: "Book and related files deleted successfully." });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to delete the book." });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  const bookId = req.params.id;
+
+  if (!req.session || !req.session.isLoggedIn) {
+    return res.status(401).json({ error: "Unauthorized: You must be logged in to modify the catalogue." });
+  }
+
+  const catalogueInfo = {
+    itemSubjects: req.body.bookSubjects,
+    itemDescription: req.body.bookDescription,
+    itemPublisher: req.body.bookPublisher,
+  };
+
+  try {
+    const updatedBookId = await updateBookAndCatalogueTransaction(bookId, req.body, catalogueInfo);
+    
+    const finalres = await getfullBookInfo(updatedBookId);
+    console.log("the final PUT response is: " + JSON.stringify(finalres));
+    res.json(finalres);
+  } catch (err) {
+    console.error("Failed to update catalogue using transaction:", err);
+    res.status(500).json({ error: "Failed to update catalogue entry" });
+  }
 });
 
 export default router;

@@ -1,5 +1,11 @@
 import express from "express";
-import { getNotes, getNote, updateNote, updateFolder, deleteNote, deleteFolder, addNewNote, addNewFolder, getSubFoldersbyParent, getFolders, getRootFolders, getRootNotes } from "../database/note.js";
+import {
+    getNotes, getNote,
+    updateNote, updateFolder,
+    deleteNote, deleteFolder, addNewNote,
+    addNewFolder, getSubFoldersbyParent,
+    getFolders, getRootFolders, getRootNotes, getSubNotesByParent
+} from "../database/note.js";
 
 const router = express.Router();
 
@@ -10,12 +16,12 @@ router.get("/", async (request, response) => {
   console.log(notes);
 });
 
-router.get("/:id", async (request, response) => {
-  const id = request.params.id;
-  const userId = request.session.user.userID;
-  const note = await getNote(id, userId);
-  response.send(note);
-  console.log(note);
+router.get("/folders", async (request, response) => {
+    console.log("THE SESSION IS " + JSON.stringify(request.session));
+  const id = request.session.user.userID;
+  const folders = await getRootFolders(id);
+  response.send(folders);
+  console.log("FOLDERS IS "+JSON.stringify(folders));
 });
 
 router.get("/folders/:id", async (request, response) => {
@@ -23,14 +29,22 @@ router.get("/folders/:id", async (request, response) => {
   const userId = request.session.user.userID;
   const folders = await getSubFoldersbyParent(id, userId);
   response.send(folders);
-  console.log(folders);
+  console.log("SUB FOLDERS IS "+JSON.stringify(folders));
 });
 
-router.get("/folders", async (request, response) => {
-  const id = request.session.user.userID;
-  const folders = await getRootFolders(id);
-  response.send(folders);
-  console.log(folders);
+router.get("/folders/:id/files", async (request, response) => {
+  const id = request.params.id;
+  const userId = request.session.user.userID;
+  const notes = await getSubNotesByParent(id, userId);
+  response.send(notes);
+  console.log("SUB Notes IS "+JSON.stringify(notes));
+});
+router.get("/:id", async (request, response) => {
+  const id = request.params.id;
+  const userId = request.session.user.userID;
+  const note = await getNote(id, userId);
+  response.send(note);
+  console.log(note);
 });
 
 router.post("/", async (request, response) => {

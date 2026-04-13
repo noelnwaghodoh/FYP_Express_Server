@@ -135,17 +135,103 @@ export async function addBookWithCatalogueTransaction(bookValues, catalogueValue
         Values(?,?,?,?,?,?,?,?)
       `,
       [
-        bookValues.bookTitle,
-        bookValues.bookIdentifier,
-        bookValues.bookEdition,
-        bookValues.bookReleaseDate,
-        bookValues.bookContributors,
-        bookValues.bookAuthor,
-        bookValues.bookFileName,
+        bookValues.bookTitle || null,
+        bookValues.bookIdentifier || null,
+        bookValues.bookEdition || null,
+        bookValues.bookReleaseDate === '' ? null : bookValues.bookReleaseDate,
+        bookValues.bookContributors || null,
+        bookValues.bookAuthor || null,
+        bookValues.bookFileName || null,
         catalogueId
       ]
     );
     const bookId = bookResult.insertId;
+
+    await connection.commit();
+    return bookId;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function deleteBookAndCatalogue(bookId) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Get catalogue ID (using AS to avoid case-sensitivity issues)
+    const [book] = await connection.query(`SELECT catalogueInfoID AS catId FROM Books WHERE BookID = ?`, [bookId]);
+    if (book.length > 0) {
+      const catalogueId = book[0].catId;
+      // 2. Delete Book
+      await connection.query(`DELETE FROM Books WHERE BookID = ?`, [bookId]);
+      // 3. Delete CatalogueInfo
+      if (catalogueId) {
+        await connection.query(`DELETE FROM CatalogueInfo WHERE CatalogueInfoID = ?`, [catalogueId]);
+      }
+    }
+
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function updateBookAndCatalogueTransaction(bookId, bookValues, catalogueValues) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [book] = await connection.query(`SELECT catalogueInfoID AS catId FROM Books WHERE BookID = ?`, [bookId]);
+    if (book.length === 0) {
+      throw new Error("Book not found");
+    }
+    const catalogueId = book[0].catId;
+
+    let updateQuery = `
+      UPDATE Books 
+      SET BookTitle = ?, BookIdentifier = ?, BookEdition = ?, BookDate = ?, BookContributors = ?, BookAuthor = ?
+    `;
+    const queryParams = [
+      bookValues.bookTitle || null,
+      bookValues.bookIdentifier || null,
+      bookValues.bookEdition || null,
+      bookValues.bookReleaseDate === '' ? null : bookValues.bookReleaseDate,
+      bookValues.bookContributors || null,
+      bookValues.bookAuthor || null
+    ];
+
+    if (bookValues.bookFileName) {
+      updateQuery += `, BookFileName = ?`;
+      queryParams.push(bookValues.bookFileName);
+    }
+
+    updateQuery += ` WHERE BookID = ?`;
+    queryParams.push(bookId);
+
+    await connection.query(updateQuery, queryParams);
+
+    if (catalogueId) {
+      await connection.query(
+        `
+          UPDATE CatalogueInfo 
+          SET ItemSubjects = ?, ItemPublisher = ?, ItemDescription = ?
+          WHERE CatalogueInfoID = ?
+        `,
+        [
+          catalogueValues.itemSubjects || null, 
+          catalogueValues.itemPublisher || null, 
+          catalogueValues.itemDescription || null, 
+          catalogueId
+        ]
+      );
+    }
 
     await connection.commit();
     return bookId;

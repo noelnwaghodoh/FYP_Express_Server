@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -154,5 +155,38 @@ export async function generateCatalogueDownloadURL(fileName) {
     return signedUrl;
   } catch (err) {
     console.error(err);
+  }
+}
+
+export async function deleteCatalogueFile(fileName) {
+  const command = new DeleteObjectCommand({
+    Bucket: "cataloguefiles",
+    Key: `ebooks/${fileName}`,
+  });
+
+  try {
+    await catalogueClient.send(command);
+    console.log(`Successfully deleted ${fileName} from cataloguefiles`);
+  } catch (err) {
+    console.error("Failed to delete catalogue file:", err);
+    throw err;
+  }
+}
+
+export async function deleteThumbnailFile(fileName) {
+  const originalName = path.parse(fileName).name;
+  const thumbnailKey = `thumbnails/thumb+${originalName}.jpg`;
+
+  const command = new DeleteObjectCommand({
+    Bucket: "fyp-assets",
+    Key: thumbnailKey,
+  });
+
+  try {
+    await thumbnailClient.send(command);
+    console.log(`Successfully deleted ${thumbnailKey} from fyp-assets`);
+  } catch (err) {
+    console.error("Failed to delete thumbnail file:", err);
+    throw err;
   }
 }

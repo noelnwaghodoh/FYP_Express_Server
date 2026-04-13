@@ -54,7 +54,8 @@ export async function addNewNote(id,noteTitle,noteContent,parentID) {
       return rows;
     }
     
-    export async function getRootFolders(id) {
+export async function getRootFolders(id) {
+        console.log("ID IS " + id);
       const [rows] = await pool.query(
         `
         SELECT * 
