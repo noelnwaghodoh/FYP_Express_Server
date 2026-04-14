@@ -93,6 +93,10 @@ app.put("/uploadcomplete", async (req, res) => {
 app.use("/books", bookRoutes);
 app.use("/notes", noteRoutes);
 
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
 app.post("/edit", (request, response) => {
   response.send("This is PUT request at /edit");
 });
