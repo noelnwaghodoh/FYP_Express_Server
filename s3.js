@@ -11,26 +11,26 @@ dotenv.config();
 
 import fs from "fs";
 import path from "path";
-import pdf from "pdf-poppler";
+import { fromPath } from "pdf2pic";
 import sharp from "sharp";
 
 async function convertPDFFile(file, fileName) {
-  // Extract just the name without the .pdf extension to use as the prefix
   const originalName = path.parse(fileName).name;
   const prefix = "thumb+" + originalName;
 
-  let opts = {
+  const options = {
+    density: 150,
+    saveFilename: prefix,
+    savePath: "./tmp",
     format: "jpeg",
-    out_dir: "./tmp",
-    out_prefix: prefix,
-    page: 1,
+    width: 600,
+    height: 800
   };
 
   try {
-    // pdf-poppler doesn't return the filename, we must reconstruct it.
-    // It appends a page number (e.g. '-1') to your prefix and saves it as .jpg (based on format)
-    await pdf.convert(file, opts);
-    return `${prefix}-001.jpg`;
+    const storeAsImage = fromPath(file, options);
+    const resolve = await storeAsImage(1); // Converts page 1
+    return resolve.name;
   } catch (err) {
     console.error("Error during PDF conversion:", err);
     throw err;
