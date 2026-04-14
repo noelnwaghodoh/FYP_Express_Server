@@ -52,22 +52,21 @@ sessionStore.onReady().then(() => {
 
  
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://fyp-library-app-537xi.ondigitalocean.app/"
-  ],
-  credentials: true
+  origin: "https://fyp-library-app-537xi.ondigitalocean.app", // NO trailing slash!
+  credentials: true 
 }));
+app.set("trust proxy", 1); 
+
 
 app.use(session({
   secret: process.env.SESSION_SECRET , // Don't forget to change this later!
   store: sessionStore, // Force session saving to the database
   resave: false,
   saveUninitialized: false, // Changed to false to avoid bloat from empty sessions
-  cookie: { 
-      secure: true,
-  httpOnly: true,
-  sameSite: "none"
+ cookie: {
+    secure: true,         // MUST BE TRUE in production
+    sameSite: "none",     // MAGIC WORD for cross-domain cookies
+    maxAge: 1000 * 60 * 60 * 24
   }
 }));
 let x = null;
