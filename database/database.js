@@ -9,11 +9,12 @@ export const pool = mysql
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
+    port: process.env.MYSQL_PORT 
   })
   .promise();
 
 export async function getUsers() {
-  const [rows] = await pool.query("SELECT * FROM Users;");
+  const [rows] = await pool.query("SELECT * FROM users;");
   return rows;
 }
 
@@ -21,7 +22,7 @@ export async function getUser(id) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM Users
+    FROM users
     WHERE UserID = ?;
     `,
     [id],
@@ -34,7 +35,7 @@ export async function getBook(id) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM Catalogue
+    FROM catalogue
     WHERE BookID = ?;
     `,
     [id],
@@ -46,7 +47,7 @@ export async function addBook(values) {
   console.log(values);
   const [result] = await pool.query(
     `
-      INSERT into Catalogue (BookTitle,BookSubjects,BookPublisher,BookIdentifier,BookEdition,BookDate,BookContributors,BookAuthor,BookFileName)
+      INSERT INTO catalogue (BookTitle,BookSubjects,BookPublisher,BookIdentifier,BookEdition,BookDate,BookContributors,BookAuthor,BookFileName)
       Values(?,?,?,?,?,?,?,?,?)
     `,
     [
@@ -71,7 +72,7 @@ export async function login(email, password) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM Users
+    FROM users
     WHERE UserEmail = ? and UserPassword =?;
     `,
     [email, password],

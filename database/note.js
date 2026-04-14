@@ -9,6 +9,7 @@ export const pool = mysql
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
+    port: process.env.MYSQL_PORT 
   })
     .promise();
 
@@ -16,13 +17,13 @@ export const pool = mysql
 export async function addNewFolder(id,folderName,parentID) {
   const [result] = await pool.query(
     `
-    INSERT INTO Folders (UserID,FolderName,ParentID,FolderDate)
+    INSERT INTO folders (UserID,FolderName,ParentID,FolderDate)
     VALUES (?,?,?,?);
     `,
     [id,folderName,parentID,new Date()],
   );
   const [newFolder] = await pool.query(
-    `SELECT * FROM Folders WHERE FolderID = ?;`,
+    `SELECT * FROM folders WHERE FolderID = ?;`,
     [result.insertId]
   );
   return newFolder[0];
@@ -30,13 +31,13 @@ export async function addNewFolder(id,folderName,parentID) {
 export async function addNewNote(id,noteTitle,noteContent,parentID) {
   const [result] = await pool.query(
     `
-    INSERT INTO Notes (UserID,NoteTitle,NotesContent,FolderID,NoteDate)
+    INSERT INTO notes (UserID,NoteTitle,NotesContent,FolderID,NoteDate)
     VALUES (?,?,?,?,?);
     `,
     [id,noteTitle,JSON.stringify(noteContent),parentID,new Date()],
   );
   const [newNote] = await pool.query(
-    `SELECT * FROM Notes WHERE NoteID = ?;`,
+    `SELECT * FROM notes WHERE NoteID = ?;`,
     [result.insertId]
   );
   return newNote[0];
@@ -46,7 +47,7 @@ export async function addNewNote(id,noteTitle,noteContent,parentID) {
       const [rows] = await pool.query(
         `
         SELECT * 
-        FROM Folders
+        FROM folders
         WHERE UserID = ?;
         `,
         [id],
@@ -59,7 +60,7 @@ export async function getRootFolders(id) {
       const [rows] = await pool.query(
         `
         SELECT * 
-        FROM Folders
+        FROM folders
         WHERE ParentID IS NULL AND UserID = ?;
         `,
         [id],
@@ -71,7 +72,7 @@ export async function getRootFolders(id) {
       const [rows] = await pool.query(
         `
         SELECT * 
-        FROM Folders
+        FROM folders
         WHERE ParentID = ? AND UserID = ?;
         `,
         [id, userId],
@@ -83,7 +84,7 @@ export async function getRootFolders(id) {
       const [rows] = await pool.query(
         `
         SELECT * 
-        FROM Notes
+        FROM notes
         WHERE FolderID IS NULL AND UserID = ?;
         `,
         [id],
@@ -95,7 +96,7 @@ export async function getRootFolders(id) {
       const [rows] = await pool.query(
         `
         SELECT * 
-        FROM Notes
+        FROM notes
         WHERE FolderID = ? AND UserID = ?;
         `,
         [id, userId],
@@ -107,7 +108,7 @@ export async function getNote(id, userId) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM Notes
+    FROM notes
     WHERE NoteID = ? AND UserID = ?;
     `,
     [id, userId],
@@ -119,7 +120,7 @@ export async function getNote(id, userId) {
       const [rows] = await pool.query(
         `
         SELECT * 
-        FROM Notes
+        FROM notes
         WHERE UserID = ?;
         `,
         [id],
@@ -130,7 +131,7 @@ export async function getNote(id, userId) {
 export async function updateNote(noteId, userId, noteTitle, noteContent) {
   const [rows] = await pool.query(
     `
-    UPDATE Notes
+    UPDATE notes
     SET NoteTitle = ?, NotesContent = ?, NoteUpdatedAt = ?
     WHERE NoteID = ? AND UserID = ?;
     `,
@@ -142,7 +143,7 @@ export async function updateNote(noteId, userId, noteTitle, noteContent) {
 export async function updateFolder(folderId, userId, folderName) {
   const [rows] = await pool.query(
     `
-    UPDATE Folders
+    UPDATE folders
     SET FolderName = ?
     WHERE FolderID = ? AND UserID = ?;
     `,
@@ -154,7 +155,7 @@ export async function updateFolder(folderId, userId, folderName) {
 export async function deleteNote(noteId, userId) {
   const [rows] = await pool.query(
     `
-    DELETE FROM Notes
+    DELETE FROM notes
     WHERE NoteID = ? AND UserID = ?;
     `,
     [noteId, userId],
@@ -165,7 +166,7 @@ export async function deleteNote(noteId, userId) {
 export async function deleteFolder(folderId, userId) {
   const [rows] = await pool.query(
     `
-    DELETE FROM Folders
+    DELETE FROM folders
     WHERE FolderID = ? AND UserID = ?;
     `,
     [folderId, userId],

@@ -8,6 +8,7 @@ export const pool = mysql
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
+    port: process.env.MYSQL_PORT 
   })
   .promise();
 
@@ -15,7 +16,7 @@ export async function newgetBook(id) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM Books
+    FROM books
     WHERE BookID = ?;
     `,
     [id],
@@ -27,7 +28,7 @@ export async function getBooksByTitle(title) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM Books
+    FROM books
     WHERE BookTitle = ?;
     `,
     [title],
@@ -38,10 +39,10 @@ export async function getBooksByTitle(title) {
 export async function getfullBookInfo(id) {
   const [rows] = await pool.query(
     `
-    SELECT Books.* , CatalogueInfo.ItemSubjects, CatalogueInfo.ItemDescription,CatalogueInfo.ItemPublisher 
-    FROM Books 
-    INNER JOIN CatalogueInfo
-    ON Books.CatalogueInfoID = CatalogueInfo.CatalogueInfoID AND Books.BookID= ?
+    SELECT books.* , catalogueinfo.ItemSubjects, catalogueinfo.ItemDescription,catalogueinfo.ItemPublisher 
+    FROM books 
+    INNER JOIN catalogueinfo
+    ON books.CatalogueInfoID = catalogueinfo.CatalogueInfoID AND books.BookID= ?
     `,
     [id],
   );
@@ -54,7 +55,7 @@ export async function getCatalogueInfo(id) {
   const [rows] = await pool.query(
     `
     SELECT * 
-    FROM CatalogueInfo
+    FROM catalogueinfo
     WHERE CatalogueInfoID = ?;
     `,
     [id],
@@ -66,7 +67,7 @@ export async function addNewBook(values) {
   console.log(values);
   const [result] = await pool.query(
     `
-      INSERT into Books (BookTitle,BookIdentifier,BookEdition,BookDate,BookContributors,BookAuthor,BookFileName)
+      INSERT INTO books (BookTitle,BookIdentifier,BookEdition,BookDate,BookContributors,BookAuthor,BookFileName)
       Values(?,?,?,?,?,?,?)
     `,
     [
@@ -89,7 +90,7 @@ export async function addBookID(id) {
   //console.log("id is " + id);
   const [result] = await pool.query(
     `
-      UPDATE Books
+      UPDATE books
       SET catalogueInfoID = ?
       WHERE BookID = ?;`,
     [id, id],
@@ -103,7 +104,7 @@ export async function addNewCatalogueInfo(values) {
   console.log(values);
   const [result] = await pool.query(
     `
-      INSERT into CatalogueInfo (ItemSubjects,ItemPublisher,ItemDescription)
+      INSERT INTO catalogueinfo (ItemSubjects,ItemPublisher,ItemDescription)
       Values(?,?,?)
     `,
     [values.itemSubjects, values.itemPublisher, values.itemDescription],
@@ -121,7 +122,7 @@ export async function addBookWithCatalogueTransaction(bookValues, catalogueValue
     // 1. Insert CatalogueInfo
     const [catalogueResult] = await connection.query(
       `
-        INSERT into CatalogueInfo (ItemSubjects,ItemPublisher,ItemDescription)
+        INSERT INTO catalogueinfo (ItemSubjects,ItemPublisher,ItemDescription)
         Values(?,?,?)
       `,
       [catalogueValues.itemSubjects, catalogueValues.itemPublisher, catalogueValues.itemDescription]
@@ -131,7 +132,7 @@ export async function addBookWithCatalogueTransaction(bookValues, catalogueValue
     // 2. Insert Book linking the newly created CatalogueInfoID
     const [bookResult] = await connection.query(
       `
-        INSERT into Books (BookTitle, BookIdentifier, BookEdition, BookDate, BookContributors, BookAuthor, BookFileName, catalogueInfoID)
+        INSERT INTO books (BookTitle, BookIdentifier, BookEdition, BookDate, BookContributors, BookAuthor, BookFileName, catalogueInfoID)
         Values(?,?,?,?,?,?,?,?)
       `,
       [
@@ -163,14 +164,14 @@ export async function deleteBookAndCatalogue(bookId) {
     await connection.beginTransaction();
 
     // 1. Get catalogue ID (using AS to avoid case-sensitivity issues)
-    const [book] = await connection.query(`SELECT catalogueInfoID AS catId FROM Books WHERE BookID = ?`, [bookId]);
+    const [book] = await connection.query(`SELECT catalogueInfoID AS catId FROM books WHERE BookID = ?`, [bookId]);
     if (book.length > 0) {
       const catalogueId = book[0].catId;
       // 2. Delete Book
-      await connection.query(`DELETE FROM Books WHERE BookID = ?`, [bookId]);
+      await connection.query(`DELETE FROM books WHERE BookID = ?`, [bookId]);
       // 3. Delete CatalogueInfo
       if (catalogueId) {
-        await connection.query(`DELETE FROM CatalogueInfo WHERE CatalogueInfoID = ?`, [catalogueId]);
+        await connection.query(`DELETE FROM catalogueinfo WHERE CatalogueInfoID = ?`, [catalogueId]);
       }
     }
 
@@ -188,14 +189,14 @@ export async function updateBookAndCatalogueTransaction(bookId, bookValues, cata
   try {
     await connection.beginTransaction();
 
-    const [book] = await connection.query(`SELECT catalogueInfoID AS catId FROM Books WHERE BookID = ?`, [bookId]);
+    const [book] = await connection.query(`SELECT catalogueInfoID AS catId FROM books WHERE BookID = ?`, [bookId]);
     if (book.length === 0) {
       throw new Error("Book not found");
     }
     const catalogueId = book[0].catId;
 
     let updateQuery = `
-      UPDATE Books 
+      UPDATE books 
       SET BookTitle = ?, BookIdentifier = ?, BookEdition = ?, BookDate = ?, BookContributors = ?, BookAuthor = ?
     `;
     const queryParams = [
@@ -220,7 +221,7 @@ export async function updateBookAndCatalogueTransaction(bookId, bookValues, cata
     if (catalogueId) {
       await connection.query(
         `
-          UPDATE CatalogueInfo 
+          UPDATE catalogueinfo 
           SET ItemSubjects = ?, ItemPublisher = ?, ItemDescription = ?
           WHERE CatalogueInfoID = ?
         `,

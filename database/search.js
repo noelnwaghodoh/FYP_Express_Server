@@ -7,6 +7,7 @@ export const pool = mysql
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
+    port: process.env.MYSQL_PORT 
   })
   .promise();
 
@@ -15,7 +16,7 @@ export async function Search5BooksByTitle(title) {
   const [rows] = await pool.query(
     `
     SELECT BookTitle
-    FROM Books
+    FROM books
     WHERE BookTitle LIKE ?
     LIMIT 5;
     `,
@@ -28,10 +29,10 @@ export async function SearchBooksByTitle(title) {
   console.log("the title is: " + title);
   const [rows] = await pool.query(
     `
-    SELECT Books.* , CatalogueInfo.ItemSubjects, CatalogueInfo.ItemDescription,CatalogueInfo.ItemPublisher 
-    FROM Books 
-    INNER JOIN CatalogueInfo
-    ON Books.CatalogueInfoID = CatalogueInfo.CatalogueInfoID AND Books.BookTitle LIKE ?
+    SELECT books.* , catalogueinfo.ItemSubjects, catalogueinfo.ItemDescription,catalogueinfo.ItemPublisher 
+    FROM books 
+    INNER JOIN catalogueinfo
+    ON books.CatalogueInfoID = catalogueinfo.CatalogueInfoID AND books.BookTitle LIKE ?
     `,
     [title + "%"],
   );
