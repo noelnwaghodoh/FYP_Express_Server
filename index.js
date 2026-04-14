@@ -54,7 +54,7 @@ sessionStore.onReady().then(() => {
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://your-frontend-domain.com"
+    "https://fyp-library-app-537xi.ondigitalocean.app/"
   ],
   credentials: true
 }));
