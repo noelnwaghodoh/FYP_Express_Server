@@ -38,7 +38,8 @@ const options = {
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
-    port: process.env.MYSQL_PORT
+    port: process.env.MYSQL_PORT,
+    ssl: { rejectUnauthorized: false }
 }; 
 const sessionStore = new MySQLStore(options);
 
@@ -49,14 +50,24 @@ sessionStore.onReady().then(() => {
 });
 
 
+ 
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://your-frontend-domain.com"
+  ],
+  credentials: true
+}));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'keyboard cat', // Don't forget to change this later!
+  secret: process.env.SESSION_SECRET , // Don't forget to change this later!
   store: sessionStore, // Force session saving to the database
   resave: false,
   saveUninitialized: false, // Changed to false to avoid bloat from empty sessions
   cookie: { 
-      secure: false // Since you are on localhost (HTTP) this must be false, otherwise cookies won't save
+      secure: true,
+  httpOnly: true,
+  sameSite: "none"
   }
 }));
 let x = null;
