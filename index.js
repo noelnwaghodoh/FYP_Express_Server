@@ -99,9 +99,9 @@ app.post("/edit", (request, response) => {
 app.post("/delete", (request, response) => {
   response.send("This is DELETE request at /delte");
 });
-const PORT = process.env.DO_PORT;
+const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
-  console.log(`The server is runnig on port ${PORT}`);
+  console.log(`The server is running on port ${PORT}`);
   //console.log(data);
 });
