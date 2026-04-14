@@ -44,7 +44,13 @@ export async function generateThumbnail(fileName) {
 
   // pdf-poppler requires a local file path, so we must download the file first
   // We'll save it to the existing ./tmp directory
-  const tempPdfPath = path.join("./tmp", path.basename(fileName));
+  // Ensure the tmp directory physically exists before we attempt to write to it
+  const tmpDir = "./tmp";
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true });
+  }
+
+  const tempPdfPath = path.join(tmpDir, path.basename(fileName));
 
   try {
     // 1. Download the PDF from the presigned URL
