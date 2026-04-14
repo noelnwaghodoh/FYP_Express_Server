@@ -99,7 +99,7 @@ app.post("/edit", (request, response) => {
 app.post("/delete", (request, response) => {
   response.send("This is DELETE request at /delte");
 });
-const PORT = 8080;
+const PORT = process.env.DO_PORT;
 
 app.listen(PORT, () => {
   console.log(`The server is runnig on port ${PORT}`);
