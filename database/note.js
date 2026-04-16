@@ -16,6 +16,14 @@ export const pool = mysql
 
 
 export async function addNewFolder(id,folderName,parentID) {
+  const [existing] = await pool.query(
+    `SELECT FolderID FROM folders WHERE UserID = ? AND FolderName = ? AND ParentID <=> ?;`,
+    [id, folderName, parentID]
+  );
+  if (existing.length > 0) {
+    throw new Error("Duplicate folder name");
+  }
+
   const [result] = await pool.query(
     `
     INSERT INTO folders (UserID,FolderName,ParentID,FolderDate)
@@ -30,6 +38,14 @@ export async function addNewFolder(id,folderName,parentID) {
   return newFolder[0];
 }
 export async function addNewNote(id,noteTitle,noteContent,parentID) {
+  const [existing] = await pool.query(
+    `SELECT NoteID FROM notes WHERE UserID = ? AND NoteTitle = ? AND FolderID <=> ?;`,
+    [id, noteTitle, parentID]
+  );
+  if (existing.length > 0) {
+    throw new Error("Duplicate note title");
+  }
+
   const [result] = await pool.query(
     `
     INSERT INTO notes (UserID,NoteTitle,NotesContent,FolderID,NoteDate)

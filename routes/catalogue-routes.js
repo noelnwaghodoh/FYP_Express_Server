@@ -3,12 +3,22 @@ import { getfullBookInfo, addBookWithCatalogueTransaction, deleteBookAndCatalogu
 import { SearchBooksByTitle } from "../database/search.js";
 import { generateCatalogueUploadURL, generateCatalogueDownloadURL, deleteCatalogueFile, deleteThumbnailFile } from "../s3.js";
 
+function isValidISBN(isbn) {
+  if (!isbn) return false;
+  const cleanISBN = isbn.toString().replace(/[- ]/g, "").trim();
+  return /^(\d{10}|\d{13})$/.test(cleanISBN);
+}
+
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   // Protect the route using the session
   if (!req.session || !req.session.isLoggedIn) {
     return res.status(401).json({ error: "Unauthorized: You must be logged in to upload to the catalogue." });
+  }
+
+  if (req.body.bookISBN && !isValidISBN(req.body.bookISBN)) {
+    return res.status(400).json({ error: "Invalid ISBN format. Must be exactly 10 or 13 digits." });
   }
 
   const catalogueInfo = {
@@ -96,6 +106,10 @@ router.put("/:id", async (req, res) => {
 
   if (!req.session || !req.session.isLoggedIn) {
     return res.status(401).json({ error: "Unauthorized: You must be logged in to modify the catalogue." });
+  }
+
+  if (req.body.bookISBN && !isValidISBN(req.body.bookISBN)) {
+    return res.status(400).json({ error: "Invalid ISBN format. Must be exactly 10 or 13 digits." });
   }
 
   const catalogueInfo = {

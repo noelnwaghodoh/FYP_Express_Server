@@ -49,16 +49,34 @@ router.get("/:id", async (request, response) => {
 
 router.post("/", async (request, response) => {
   const parentId = request.body.parentID || null;
-  const note = await addNewNote(request.session.user.userID, request.body.noteTitle, request.body.noteContent, parentId);
-  response.send(note);
-  console.log("THE NOTE IS " +JSON.stringify(note));
+  try {
+    const note = await addNewNote(request.session.user.userID, request.body.noteTitle, request.body.noteContent, parentId);
+    response.send(note);
+    console.log("THE NOTE IS " +JSON.stringify(note));
+  } catch (error) {
+    if (error.message === "Duplicate note title") {
+      response.status(409).json({ error: "A note with this title already exists here." });
+    } else {
+      console.error(error);
+      response.status(500).json({ error: "Failed to create note" });
+    }
+  }
 });
 
 router.post("/folders", async (request, response) => {
   const parentId = request.body.parentID || null;
-  const folder = await addNewFolder(request.session.user.userID, request.body.folderName, parentId);
-  response.send(folder);
-  console.log(folder);
+  try {
+    const folder = await addNewFolder(request.session.user.userID, request.body.folderName, parentId);
+    response.send(folder);
+    console.log(folder);
+  } catch (error) {
+    if (error.message === "Duplicate folder name") {
+      response.status(409).json({ error: "A folder with this name already exists here." });
+    } else {
+      console.error(error);
+      response.status(500).json({ error: "Failed to create folder" });
+    }
+  }
 });
 
 router.put("/:id", async (request, response) => {

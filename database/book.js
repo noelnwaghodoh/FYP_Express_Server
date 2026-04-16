@@ -1,8 +1,7 @@
 import mysql from "mysql2";
 import dotenv from "dotenv";
-dotenv.config();
-
-export const pool = mysql
+import path from "path";
+dotenv.config();export const pool = mysql
   .createPool({
     host: process.env.MYSQL_HOST,
     user: process.env.MYSQL_USER,
@@ -130,11 +129,19 @@ export async function addBookWithCatalogueTransaction(bookValues, catalogueValue
     );
     const catalogueId = catalogueResult.insertId;
 
+    // Use manually provided URL if it exists, otherwise rigorously calculate it
+    let thumbnailUrl = bookValues.bookThumbnailURL || null;
+    if (!thumbnailUrl && bookValues.bookFileName) {
+      const originalName = path.parse(bookValues.bookFileName).name;
+      const bookThumbnailName = "thumb+" + originalName;
+      thumbnailUrl = `https://fyp-assets.lon1.cdn.digitaloceanspaces.com/thumbnails/${bookThumbnailName}.jpg`;
+    }
+
     // 2. Insert Book linking the newly created CatalogueInfoID
     const [bookResult] = await connection.query(
       `
-        INSERT INTO books (BookTitle, BookIdentifier, BookEdition, BookDate, BookContributors, BookAuthor, BookFileName, catalogueInfoID)
-        Values(?,?,?,?,?,?,?,?)
+        INSERT INTO books (BookTitle, BookIdentifier, BookEdition, BookDate, BookContributors, BookAuthor, BookFileName, catalogueInfoID, BookThumbnailURL)
+        Values(?,?,?,?,?,?,?,?,?)
       `,
       [
         bookValues.bookTitle || null,
@@ -144,7 +151,8 @@ export async function addBookWithCatalogueTransaction(bookValues, catalogueValue
         bookValues.bookContributors || null,
         bookValues.bookAuthor || null,
         bookValues.bookFileName || null,
-        catalogueId
+        catalogueId,
+        thumbnailUrl
       ]
     );
     const bookId = bookResult.insertId;
@@ -208,6 +216,19 @@ export async function updateBookAndCatalogueTransaction(bookId, bookValues, cata
       bookValues.bookContributors || null,
       bookValues.bookAuthor || null
     ];
+
+    if (bookValues.bookThumbnailURL) {
+      // 1. Manually provided thumbnail takes precedence
+      updateQuery += `, BookThumbnailURL = ?`;
+      queryParams.push(bookValues.bookThumbnailURL);
+    } else if (bookValues.bookFileName) {
+      // 2. Only compute the CDN thumbnail mathematically if the PDF was uploaded and no manual URL was set
+      updateQuery += `, BookThumbnailURL = ?`;
+      const originalName = path.parse(bookValues.bookFileName).name;
+      const bookThumbnailName = "thumb+" + originalName;
+      const thumbnailUrl = `https://fyp-assets.lon1.cdn.digitaloceanspaces.com/thumbnails/${bookThumbnailName}.jpg`;
+      queryParams.push(thumbnailUrl);
+    }
 
     if (bookValues.bookFileName) {
       updateQuery += `, BookFileName = ?`;
