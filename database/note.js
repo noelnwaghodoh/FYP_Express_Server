@@ -190,3 +190,64 @@ export async function deleteFolder(folderId, userId) {
   );
   return rows;
 }
+
+export async function moveNote(noteId, userId, newFolderId) {
+  // Check duplicate titles natively in the destination folder
+  const [existing] = await pool.query(
+    `SELECT NoteTitle FROM notes WHERE NoteID = ? AND UserID = ?;`,
+    [noteId, userId]
+  );
+  if (existing.length === 0) throw new Error("Note not found.");
+  const noteTitle = existing[0].NoteTitle;
+
+  const [duplicates] = await pool.query(
+    `SELECT NoteID FROM notes WHERE UserID = ? AND NoteTitle = ? AND FolderID <=> ? AND NoteID != ?;`,
+    [userId, noteTitle, newFolderId, noteId]
+  );
+  
+  if (duplicates.length > 0) {
+    throw new Error("Duplicate note title");
+  }
+
+  const [rows] = await pool.query(
+    `
+    UPDATE notes
+    SET FolderID = ?
+    WHERE NoteID = ? AND UserID = ?;
+    `,
+    [newFolderId, noteId, userId],
+  );
+  return rows;
+}
+
+export async function moveFolder(folderId, userId, newParentId) {
+  // Prevent infinite loops safely
+  if (String(folderId) === String(newParentId)) throw new Error("Cannot move a folder into itself.");
+
+  // For robust safety, we meticulously check duplicate names in the destination prior to moving
+  const [existing] = await pool.query(
+    `SELECT FolderName FROM folders WHERE FolderID = ? AND UserID = ?;`,
+    [folderId, userId]
+  );
+  if (existing.length === 0) throw new Error("Folder not found.");
+  const folderName = existing[0].FolderName;
+
+  const [duplicates] = await pool.query(
+    `SELECT FolderID FROM folders WHERE UserID = ? AND FolderName = ? AND ParentID <=> ? AND FolderID != ?;`,
+    [userId, folderName, newParentId, folderId]
+  );
+  
+  if (duplicates.length > 0) {
+    throw new Error("Duplicate folder name");
+  }
+
+  const [rows] = await pool.query(
+    `
+    UPDATE folders
+    SET ParentID = ?
+    WHERE FolderID = ? AND UserID = ?;
+    `,
+    [newParentId, folderId, userId],
+  );
+  return rows;
+}

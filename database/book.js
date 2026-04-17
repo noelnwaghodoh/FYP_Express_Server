@@ -265,3 +265,52 @@ export async function updateBookAndCatalogueTransaction(bookId, bookValues, cata
     connection.release();
   }
 }
+
+export async function getBookSubjects(bookId) {
+  const [rows] = await pool.query(
+    `SELECT catalogueinfo.ItemSubjects 
+     FROM books 
+     INNER JOIN catalogueinfo ON books.CatalogueInfoID = catalogueinfo.CatalogueInfoID 
+     WHERE books.BookID = ?;`,
+    [bookId]
+  );
+  
+  if (rows.length === 0 || !rows[0].ItemSubjects) return [];
+  
+  // Safely parse the comma-separated string natively into a Javascript Array!
+  return rows[0].ItemSubjects.split(",").map(sub => sub.trim()).filter(sub => sub.length > 0);
+}
+
+export async function getAllUniqueSubjects() {
+  const [rows] = await pool.query(`SELECT ItemSubjects FROM catalogueinfo WHERE ItemSubjects IS NOT NULL AND ItemSubjects != ''`);
+  let allSubjects = new Set();
+  
+  rows.forEach(row => {
+     if (row.ItemSubjects) {
+         row.ItemSubjects.split(",").forEach(sub => {
+             const cleanSub = sub.trim();
+             if (cleanSub.length > 0) allSubjects.add(cleanSub);
+         });
+     }
+  });
+  
+  // Return a completely deduplicated and alphabetically sorted native array!
+  return Array.from(allSubjects).sort();
+}
+
+export async function getBooksBySubject(subjectName) {
+  if (!subjectName) return [];
+  
+  // Use a wildcard search dynamically to match the specific subject string anywhere within the comma-separated structure
+  const exactSearchPattern = `%${subjectName.trim()}%`;
+  
+  const [rows] = await pool.query(
+    `SELECT books.*, catalogueinfo.ItemSubjects, catalogueinfo.ItemDescription, catalogueinfo.ItemPublisher 
+     FROM books 
+     INNER JOIN catalogueinfo ON books.CatalogueInfoID = catalogueinfo.CatalogueInfoID 
+     WHERE catalogueinfo.ItemSubjects LIKE ?;`,
+    [exactSearchPattern]
+  );
+  
+  return rows;
+}

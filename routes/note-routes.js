@@ -4,7 +4,8 @@ import {
     updateNote, updateFolder,
     deleteNote, deleteFolder, addNewNote,
     addNewFolder, getSubFoldersbyParent,
-    getFolders, getRootFolders, getRootNotes, getSubNotesByParent
+    getFolders, getRootFolders, getRootNotes, getSubNotesByParent,
+    moveNote, moveFolder
 } from "../database/note.js";
 
 const router = express.Router();
@@ -136,6 +137,45 @@ router.delete("/folders/:id", async (request, response) => {
   } catch (error) {
     console.error(error);
     response.status(500).json({ error: "Failed to delete folder" });
+  }
+});
+
+router.put("/:id/move", async (request, response) => {
+  const noteId = request.params.id;
+  const userId = request.session.user.userID;
+  // If the frontend explicitly sends null or undefined, this strictly defaults to null (ROOT directory map!)
+  const newFolderId = request.body.folderId || null;
+
+  try {
+    await moveNote(noteId, userId, newFolderId);
+    response.json({ success: true, message: "Note moved successfully" });
+  } catch (error) {
+    if (error.message === "Duplicate note title") {
+      response.status(409).json({ error: "A note with this title already exists in the destination." });
+    } else {
+      console.error(error);
+      response.status(500).json({ error: "Failed to move note" });
+    }
+  }
+});
+
+router.put("/folders/:id/move", async (request, response) => {
+  const folderId = request.params.id;
+  const userId = request.session.user.userID;
+  const newParentId = request.body.parentId || request.body.folderId || null;
+
+  try {
+    await moveFolder(folderId, userId, newParentId);
+    response.json({ success: true, message: "Folder moved successfully" });
+  } catch (error) {
+    if (error.message === "Duplicate folder name") {
+      response.status(409).json({ error: "A folder with this name already exists in the destination." });
+    } else if (error.message === "Cannot move a folder into itself.") {
+      response.status(400).json({ error: error.message });
+    } else {
+      console.error(error);
+      response.status(500).json({ error: "Failed to move folder" });
+    }
   }
 });
 

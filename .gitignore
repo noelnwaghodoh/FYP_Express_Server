@@ -1,2 +1,6 @@
 .env
 node_modules/
+Python_Revision-3.ipynb
+.gitignore
+penrhyn.csv
+pipeline.ipynb
