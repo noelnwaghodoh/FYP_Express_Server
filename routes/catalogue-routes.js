@@ -1,5 +1,5 @@
 import express from "express";
-import { getfullBookInfo, addBookWithCatalogueTransaction, deleteBookAndCatalogue, updateBookAndCatalogueTransaction } from "../database/book.js";
+import { getfullBookInfo, addBookWithCatalogueTransaction, deleteBookAndCatalogue, updateBookAndCatalogueTransaction, getBooksBySubject, getAllUniqueSubjects } from "../database/book.js";
 import { SearchBooksByTitle } from "../database/search.js";
 import { generateCatalogueUploadURL, generateCatalogueDownloadURL, deleteCatalogueFile, deleteThumbnailFile } from "../s3.js";
 
@@ -54,6 +54,27 @@ router.get("/id", async (req, res) => {
   const books = await getfullBookInfo(id);
   res.send(books);
   console.log(books);
+});
+
+router.get("/subjects/all", async (req, res) => {
+  try {
+    const subjects = await getAllUniqueSubjects();
+    res.json(subjects);
+  } catch (error) {
+    console.error("Failed to load unique subjects:", error);
+    res.status(500).json({ error: "Failed to load subjects" });
+  }
+});
+
+router.get("/subjects/:subjectName", async (req, res) => {
+  try {
+    const subject = req.params.subjectName;
+    const books = await getBooksBySubject(subject);
+    res.json(books);
+  } catch (error) {
+    console.error(`Failed to load books for subject ${req.params.subjectName}:`, error);
+    res.status(500).json({ error: "Failed to load books by subject" });
+  }
 });
 
 router.get("/upload", async (req, res) => {
