@@ -27,10 +27,23 @@ export async function Search5BooksByTitle(title) {
 }
 
 export async function SearchBooksByTitle(query) {
-  console.log("Executing Tiered Search for: " + query);
+  console.log("Executing Tiered Combined Search for: " + query);
   
-  // TIER 1: Strict Prefix matching (Fastest, most relevant exact titles)
-  let [rows] = await pool.query(
+  const combinedResults = [];
+  const processedBookIDs = new Set();
+  
+  // Local helper to natively deduplicate and linearly stack the tiers together 
+  const ingestResults = (queryRows) => {
+    for (const row of queryRows) {
+      if (!processedBookIDs.has(row.BookID)) {
+        processedBookIDs.add(row.BookID);
+        combinedResults.push(row);
+      }
+    }
+  };
+
+  // TIER 1: Strict Prefix matching (Fastest, exact prefixes get Pushed first)
+  const [tier1] = await pool.query(
     `
     SELECT books.* , catalogueinfo.ItemSubjects, catalogueinfo.ItemDescription, catalogueinfo.ItemPublisher 
     FROM books 
@@ -40,12 +53,10 @@ export async function SearchBooksByTitle(query) {
     `,
     [query + "%"]
   );
+  ingestResults(tier1);
 
-  // If we dynamically catch results exclusively matching exactly what they typed, bail out early!
-  if (rows.length > 0) return rows;
-
-  // TIER 2: Broad Text Title matching (Checks if the term mathematically exists anywhere geographically in the title string)
-  [rows] = await pool.query(
+  // TIER 2: Broad Text matching (Word structurally buried in title, pushed second)
+  const [tier2] = await pool.query(
     `
     SELECT books.* , catalogueinfo.ItemSubjects, catalogueinfo.ItemDescription, catalogueinfo.ItemPublisher 
     FROM books 
@@ -55,12 +66,10 @@ export async function SearchBooksByTitle(query) {
     `,
     ["%" + query + "%"]
   );
+  ingestResults(tier2);
 
-  // If the broad title matched something tucked into the end of a title, bail!
-  if (rows.length > 0) return rows;
-
-  // TIER 3: Deep Deep Subject & Author Fallback checking (The final net)
-  [rows] = await pool.query(
+  // TIER 3: Subject & Author Fallbacks (Extremely broad conceptual mapping, pushed last)
+  const [tier3] = await pool.query(
     `
     SELECT books.* , catalogueinfo.ItemSubjects, catalogueinfo.ItemDescription, catalogueinfo.ItemPublisher 
     FROM books 
@@ -70,6 +79,8 @@ export async function SearchBooksByTitle(query) {
     `,
     ["%" + query + "%", "%" + query + "%"]
   );
+  ingestResults(tier3);
 
-  return rows;
+  // Safely chop off the massive tail so we don't mathematically overload the JSON payload!
+  return combinedResults.slice(0, 150);
 }
