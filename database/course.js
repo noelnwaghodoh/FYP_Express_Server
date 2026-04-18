@@ -80,7 +80,7 @@ export async function getRecommendedBooksForCourse(courseId) {
   `;
 
   // 4. Safely inject our dynamically created %param% wildcard wrappers for the parameters array
-  const queryParams = subjectsArray.map(subject => \`%\${subject}%\`);
+  const queryParams = subjectsArray.map(subject => `%${subject}%`);
 
   // Execute natively
   const [rows] = await pool.query(sqlQuery, queryParams);
